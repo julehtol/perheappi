@@ -29,6 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="fi" className={nunito.variable} style={{ ["--font-sans" as string]: "var(--font-nunito), ui-rounded, system-ui, sans-serif" }}>
       <body className="min-h-dvh antialiased">
+        <div className="app-bg" aria-hidden />
         {children}
         <ServiceWorker />
       </body>

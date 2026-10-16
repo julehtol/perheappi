@@ -89,7 +89,7 @@ export function ProfilePicker({ members }: { members: PickMember[] }) {
             {m.role === "parent" && <span className="text-xs font-bold text-muted">vanhempi</span>}
           </button>
         ))}
-        <button type="button" onClick={() => setCreating(true)} className="flex flex-col items-center justify-center gap-2 rounded-[1.25rem] border-2 border-dashed border-line p-4 text-muted">
+        <button type="button" onClick={() => setCreating(true)} className="flex flex-col items-center justify-center gap-2 rounded-[1.25rem] border-2 border-dashed border-line bg-white/75 p-4 text-muted backdrop-blur-sm">
           <span className="text-4xl">＋</span>
           <span className="font-bold">Olen uusi</span>
         </button>

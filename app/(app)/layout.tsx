@@ -17,7 +17,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="mx-auto min-h-dvh max-w-xl">
-      <header className="sticky top-0 z-20 bg-cream/90 pt-safe backdrop-blur">
+      <header className="sticky top-0 z-20 bg-cream/75 pt-safe backdrop-blur-md">
         <div className="flex items-center justify-between px-4 py-2">
           <Link href="/" className="text-lg font-black tracking-tight">
             Perhe<span className="text-brand">appi</span>
