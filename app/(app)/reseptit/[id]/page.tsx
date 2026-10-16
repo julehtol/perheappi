@@ -33,7 +33,12 @@ export default async function Resepti({ params }: { params: Promise<{ id: string
         </div>
       </header>
 
-      <RecipeActions recipeId={recipe.id} isParent={me.role === "parent"} defaultDate={addDays(today(), 1)} />
+      <RecipeActions
+        recipeId={recipe.id}
+        isParent={me.role === "parent"}
+        defaultDate={addDays(today(), 1)}
+        members={members.map(({ id, name, emoji, color }) => ({ id, name, emoji, color }))}
+      />
 
       {lines.length > 0 && <Ingredients lines={lines} title={recipe.title} />}
 

@@ -46,6 +46,22 @@ function refresh() {
   revalidatePath("/", "layout");
 }
 
+/** Tekijän pitää olla saman perheen jäsen; muuten tekijä jätetään tyhjäksi. */
+async function familyCook(fd: FormData, familyId: number): Promise<number | null> {
+  const id = int(fd, "cook_id");
+  if (!id) return null;
+  const sql = await db();
+  const [m] = await sql<{ id: number }[]>`SELECT id FROM members WHERE id = ${id} AND family_id = ${familyId}`;
+  return m?.id ?? null;
+}
+
+async function memberName(id: number | null) {
+  if (!id) return null;
+  const sql = await db();
+  const [m] = await sql<{ name: string }[]>`SELECT name FROM members WHERE id = ${id}`;
+  return m?.name ?? null;
+}
+
 function mealSlot(fd: FormData): MealSlot {
   return str(fd, "slot") === "paiva" ? "paiva" : "ilta";
 }
@@ -369,6 +385,7 @@ export async function saveMeal(_: FormState, fd: FormData): Promise<FormState> {
   const recipeId = int(fd, "recipe_id");
   const note = str(fd, "note", 200) || null;
   const slot = mealSlot(fd);
+  const cookId = await familyCook(fd, me.family_id);
   let title = str(fd, "title", 100);
   if (!isDate(date)) return { error: "Valitse päivä." };
   const sql = await db();
@@ -378,14 +395,15 @@ export async function saveMeal(_: FormState, fd: FormData): Promise<FormState> {
   }
   if (!title) return { error: "Kirjoita ruoan nimi tai valitse resepti." };
   if (id) {
-    await sql`UPDATE meals SET date = ${date}, slot = ${slot}, title = ${title}, recipe_id = ${recipeId}, note = ${note}
+    await sql`UPDATE meals SET date = ${date}, slot = ${slot}, title = ${title}, cook_id = ${cookId}, recipe_id = ${recipeId}, note = ${note}
       WHERE id = ${id} AND family_id = ${me.family_id}`;
   } else {
-    await sql`INSERT INTO meals (family_id, date, slot, title, recipe_id, note, created_by)
-      VALUES (${me.family_id}, ${date}, ${slot}, ${title}, ${recipeId}, ${note}, ${me.id})`;
+    await sql`INSERT INTO meals (family_id, date, slot, title, cook_id, recipe_id, note, created_by)
+      VALUES (${me.family_id}, ${date}, ${slot}, ${title}, ${cookId}, ${recipeId}, ${note}, ${me.id})`;
+    const cook = await memberName(cookId);
     notify(
       { familyId: me.family_id, kind: "meals", exclude: me.id },
-      { title: "🍽️ Ruokalistaa päivitetty", body: `${dayLabel(date)} (${SLOT_LABEL[slot]}): ${title}`, url: `/ruoka?viikko=${date}`, tag: "meals" },
+      { title: "🍽️ Ruokalistaa päivitetty", body: `${dayLabel(date)} (${SLOT_LABEL[slot]}): ${title}${cook ? ` – kokkina ${cook}` : ""}`, url: `/ruoka?viikko=${date}`, tag: "meals" },
     );
   }
   refresh();
@@ -412,13 +430,15 @@ export async function createWish(_: FormState, fd: FormData): Promise<FormState>
     title = r?.title ?? "";
   }
   if (!title) return { error: "Mitä ruokaa toivot?" };
+  const cookId = await familyCook(fd, me.family_id);
   const [w] = await sql<{ id: number }[]>`
-    INSERT INTO wishes (family_id, title, note, recipe_id, requested_by)
-    VALUES (${me.family_id}, ${title}, ${note}, ${recipeId}, ${me.id}) RETURNING id`;
+    INSERT INTO wishes (family_id, title, note, recipe_id, requested_by, cook_id)
+    VALUES (${me.family_id}, ${title}, ${note}, ${recipeId}, ${me.id}, ${cookId}) RETURNING id`;
+  const cook = cookId === me.id ? "ja tekee sen itse" : cookId ? `– kokiksi ${await memberName(cookId)}` : "";
   await sql`INSERT INTO wish_votes (wish_id, member_id) VALUES (${w.id}, ${me.id})`;
   notify(
     { familyId: me.family_id, kind: "wishes", exclude: me.id },
-    { title: `🙏 ${me.name} toivoo ruokaa`, body: note ? `${title} – ${note}` : title, url: "/ruoka?tab=toiveet", tag: `wish-${w.id}` },
+    { title: `🙏 ${me.name} toivoo ruokaa ${cook}`.trim(), body: note ? `${title} – ${note}` : title, url: "/ruoka?tab=toiveet", tag: `wish-${w.id}` },
   );
   refresh();
   return { ok: true };
@@ -439,17 +459,19 @@ export async function approveWish(_: FormState, fd: FormData): Promise<FormState
   const id = int(fd, "id");
   const date = str(fd, "date", 10);
   const slot = mealSlot(fd);
+  const cookId = await familyCook(fd, me.family_id);
   if (!isDate(date)) return { error: "Valitse päivä." };
   const sql = await db();
   const [w] = await sql<{ title: string; recipe_id: number | null; requested_by: number | null }[]>`
-    UPDATE wishes SET status = 'approved', planned_date = ${date}, decided_by = ${me.id}, decided_at = now()
+    UPDATE wishes SET status = 'approved', planned_date = ${date}, cook_id = ${cookId}, decided_by = ${me.id}, decided_at = now()
     WHERE id = ${id} AND family_id = ${me.family_id} RETURNING title, recipe_id, requested_by`;
   if (!w) return { error: "Toivetta ei löytynyt." };
-  await sql`INSERT INTO meals (family_id, date, slot, title, recipe_id, wish_id, created_by)
-    VALUES (${me.family_id}, ${date}, ${slot}, ${w.title}, ${w.recipe_id}, ${id}, ${me.id})`;
+  await sql`INSERT INTO meals (family_id, date, slot, title, cook_id, recipe_id, wish_id, created_by)
+    VALUES (${me.family_id}, ${date}, ${slot}, ${w.title}, ${cookId}, ${w.recipe_id}, ${id}, ${me.id})`;
+  const cook = await memberName(cookId);
   notify(
     { familyId: me.family_id, kind: "wishes", exclude: me.id },
-    { title: "🎉 Ruokatoive hyväksytty!", body: `${w.title} – ${dayLabel(date).toLowerCase()} (${SLOT_LABEL[slot]})`, url: `/ruoka?viikko=${date}`, tag: `wish-${id}` },
+    { title: "🎉 Ruokatoive hyväksytty!", body: `${w.title} – ${dayLabel(date).toLowerCase()} (${SLOT_LABEL[slot]})${cook ? `, kokkina ${cook}` : ""}`, url: `/ruoka?viikko=${date}`, tag: `wish-${id}` },
   );
   refresh();
   return { ok: true };

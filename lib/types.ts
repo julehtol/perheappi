@@ -43,6 +43,7 @@ export type Meal = {
   date: string;
   slot: MealSlot;
   title: string;
+  cook_id: number | null;
   recipe_id: number | null;
   note: string | null;
   wish_id: number | null;
@@ -54,6 +55,7 @@ export type Wish = {
   note: string | null;
   recipe_id: number | null;
   requested_by: number | null;
+  cook_id: number | null;
   status: "pending" | "approved" | "rejected";
   planned_date: string | null;
   decision_note: string | null;

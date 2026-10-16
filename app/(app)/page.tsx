@@ -44,16 +44,21 @@ export default async function Home() {
         <div className="label">Tänään syödään</div>
         {todayMeals.length ? (
           todayMeals.map((m) => (
-            <div key={m.id} className="text-2xl font-black">
-              <span className="mr-2 text-sm font-black text-muted">{SLOT_SHORT[m.slot]}</span>
-              {m.title}
+            <div key={m.id} className="py-0.5">
+              <div className="text-2xl font-black">
+                <span className="mr-2 text-sm font-black text-muted">{SLOT_SHORT[m.slot]}</span>
+                {m.title}
+              </div>
+              {m.cook_id && byId.get(m.cook_id) && (
+                <div className="text-sm font-bold text-muted">👩‍🍳 {byId.get(m.cook_id)!.name} kokkaa</div>
+              )}
             </div>
           ))
         ) : (
           <div className="text-xl font-bold text-muted">Ei vielä päätetty 🤔</div>
         )}
         {tomorrowMeals.length > 0 && (
-          <div className="mt-2 text-sm text-muted">Huomenna: <b className="text-ink">{tomorrowMeals.map((m) => `${SLOT_SHORT[m.slot]}: ${m.title}`).join(" · ")}</b></div>
+          <div className="mt-2 text-sm text-muted">Huomenna: <b className="text-ink">{tomorrowMeals.map((m) => `${SLOT_SHORT[m.slot]}: ${m.title}${m.cook_id && byId.get(m.cook_id) ? ` (👩‍🍳 ${byId.get(m.cook_id)!.name})` : ""}`).join(" · ")}</b></div>
         )}
       </Link>
 

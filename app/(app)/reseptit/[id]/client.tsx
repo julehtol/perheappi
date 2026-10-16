@@ -2,6 +2,7 @@
 
 import { useActionState, useState, useTransition } from "react";
 import { addIngredientsToShopping, createWish, saveMeal } from "@/app/actions";
+import { CookPicker, type MemberLite } from "@/components/CookPicker";
 import { SlotPicker } from "@/components/SlotPicker";
 import { FormError, Submit } from "@/components/Submit";
 
@@ -47,10 +48,11 @@ export function Ingredients({ lines, title }: { lines: string[]; title: string }
   );
 }
 
-export function RecipeActions({ recipeId, isParent, defaultDate }: { recipeId: number; isParent: boolean; defaultDate: string }) {
+export function RecipeActions({ recipeId, isParent, defaultDate, members }: { recipeId: number; isParent: boolean; defaultDate: string; members: MemberLite[] }) {
   const [wishState, wishAction] = useActionState(createWish, undefined);
   const [mealState, mealAction] = useActionState(saveMeal, undefined);
   const [planning, setPlanning] = useState(false);
+  const [wishing, setWishing] = useState(false);
 
   if (isParent) {
     if (mealState?.ok) return <p className="card bg-leaf-soft p-3 text-center font-bold">Lisätty ruokalistalle ✅</p>;
@@ -60,6 +62,7 @@ export function RecipeActions({ recipeId, isParent, defaultDate }: { recipeId: n
         <input type="date" name="date" defaultValue={defaultDate} className="input w-auto flex-1" required />
         <Submit className="btn">Lisää</Submit>
         <div className="w-full"><SlotPicker /></div>
+        <div className="w-full"><CookPicker members={members} /></div>
         <div className="w-full"><FormError state={mealState} /></div>
       </form>
     ) : (
@@ -68,11 +71,13 @@ export function RecipeActions({ recipeId, isParent, defaultDate }: { recipeId: n
   }
 
   if (wishState?.ok) return <p className="card bg-grape-soft p-3 text-center font-bold">Toive lähetetty vanhemmille! 🚀</p>;
+  if (!wishing) return <button className="btn w-full" onClick={() => setWishing(true)}>🙋 Toivo tätä ruoaksi</button>;
   return (
-    <form action={wishAction}>
+    <form action={wishAction} className="card space-y-3 bg-grape-soft p-3">
       <input type="hidden" name="recipe_id" value={recipeId} />
+      <CookPicker members={members} label="👩‍🍳 Kuka tekee? (valitse itsesi, jos teet itse)" />
       <FormError state={wishState} />
-      <Submit className="btn w-full">🙋 Toivo tätä ruoaksi</Submit>
+      <Submit className="btn w-full">Lähetä toive</Submit>
     </form>
   );
 }

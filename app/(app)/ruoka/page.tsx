@@ -4,9 +4,9 @@ import { PageTitle } from "@/components/PageTitle";
 import { addDays, dayLabel, isDate, shortDate, startOfWeek, today, weekNumber } from "@/lib/dates";
 import { getMeals, getMembers, getRecipes, getWishes } from "@/lib/queries";
 import { requireMember } from "@/lib/session";
-import { showSlots, SLOT_SHORT } from "@/lib/meals";
-import { deleteMeal, deleteWish, rejectWish } from "@/app/actions";
-import { AddMeal, ApproveWish, VoteButton, WishForm } from "./client";
+import { deleteWish, rejectWish } from "@/app/actions";
+import { CookBadge } from "@/components/CookPicker";
+import { AddMeal, ApproveWish, MealItem, VoteButton, WishForm } from "./client";
 
 export default async function Ruoka({ searchParams }: { searchParams: Promise<{ viikko?: string; tab?: string }> }) {
   const me = await requireMember();
@@ -27,6 +27,7 @@ export default async function Ruoka({ searchParams }: { searchParams: Promise<{ 
   const decided = wishes.filter((w) => w.status !== "pending");
   const recipeOpts = recipes.map((r) => ({ id: r.id, title: r.title, emoji: r.emoji }));
   const isParent = me.role === "parent";
+  const memberOpts = members.map(({ id, name, emoji, color }) => ({ id, name, emoji, color }));
 
   return (
     <div className="space-y-4">
@@ -54,9 +55,8 @@ export default async function Ruoka({ searchParams }: { searchParams: Promise<{ 
             {Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)).map((d) => {
               const dayMeals = meals.filter((m) => m.date === d);
               const past = d < t;
-              const slots = showSlots(dayMeals);
               // Jos iltaruoka on jo päätetty, seuraava lisäys on todennäköisimmin päiväruoka.
-              const nextSlot = dayMeals.some((m) => m.slot === "ilta") && !slots ? "paiva" : "ilta";
+              const nextSlot = dayMeals.some((m) => m.slot === "ilta") && !dayMeals.some((m) => m.slot === "paiva") ? "paiva" : "ilta";
               return (
                 <li key={d} className={`card p-3 ${d === t ? "ring-2 ring-brand" : ""} ${past ? "opacity-60" : ""}`}>
                   <div className="flex items-baseline justify-between">
@@ -64,26 +64,17 @@ export default async function Ruoka({ searchParams }: { searchParams: Promise<{ 
                   </div>
                   {dayMeals.length === 0 && !isParent && <div className="py-1 text-muted">–</div>}
                   {dayMeals.map((m) => (
-                    <div key={m.id} className="flex items-center gap-2 py-1">
-                      {slots && <span className="w-16 shrink-0 text-xs font-black text-muted">{SLOT_SHORT[m.slot]}</span>}
-                      {m.recipe_id ? (
-                        <Link href={`/reseptit/${m.recipe_id}`} className="flex-1 text-lg font-black">
-                          {recipes.find((r) => r.id === m.recipe_id)?.emoji ?? "🍽️"} {m.title} <span className="text-sm text-brand-dark">📖</span>
-                        </Link>
-                      ) : (
-                        <span className="flex-1 text-lg font-black">🍽️ {m.title}</span>
-                      )}
-                      {m.wish_id && <span className="text-xs font-bold text-grape">toive</span>}
-                      {isParent && (
-                        <form action={deleteMeal}>
-                          <input type="hidden" name="id" value={m.id} />
-                          <button className="px-2 text-muted" aria-label="Poista">×</button>
-                        </form>
-                      )}
-                    </div>
+                    <MealItem
+                      key={m.id}
+                      meal={m}
+                      recipeEmoji={recipes.find((r) => r.id === m.recipe_id)?.emoji}
+                      cook={m.cook_id ? byId.get(m.cook_id) : null}
+                      canEdit={isParent}
+                      recipes={recipeOpts}
+                      members={memberOpts}
+                    />
                   ))}
-                  {dayMeals.some((m) => m.note) && <div className="text-sm text-muted">{dayMeals.map((m) => m.note).filter(Boolean).join(" · ")}</div>}
-                  {isParent && <AddMeal date={d} recipes={recipeOpts} hasMeal={dayMeals.length > 0} defaultSlot={nextSlot} />}
+                  {isParent && <AddMeal date={d} recipes={recipeOpts} members={memberOpts} hasMeal={dayMeals.length > 0} defaultSlot={nextSlot} />}
                 </li>
               );
             })}
@@ -94,7 +85,7 @@ export default async function Ruoka({ searchParams }: { searchParams: Promise<{ 
         </>
       ) : (
         <>
-          <WishForm recipes={recipeOpts} />
+          <WishForm recipes={recipeOpts} members={memberOpts} />
           {pending.length === 0 ? (
             <p className="py-4 text-center text-muted">Ei avoimia toiveita. Mitä teidän perhe haluaisi syödä? 😋</p>
           ) : (
@@ -110,6 +101,15 @@ export default async function Ruoka({ searchParams }: { searchParams: Promise<{ 
                           {w.recipe_id ? <Link href={`/reseptit/${w.recipe_id}`}>{w.title} 📖</Link> : w.title}
                         </div>
                         <div className="text-xs text-muted">{req?.name ?? "Joku"} toivoo</div>
+                        {w.cook_id && (
+                          <div className="mt-1">
+                            {w.cook_id === w.requested_by ? (
+                              <span className="rounded-full bg-leaf-soft px-2 py-0.5 text-sm font-black text-leaf">👩‍🍳 Teen itse!</span>
+                            ) : (
+                              <CookBadge cook={byId.get(w.cook_id)} />
+                            )}
+                          </div>
+                        )}
                         {w.note && <p className="mt-1 text-sm">“{w.note}”</p>}
                       </div>
                       <VoteButton wishId={w.id} voted={w.votes.includes(me.id)} count={w.votes.length} />
@@ -121,7 +121,7 @@ export default async function Ruoka({ searchParams }: { searchParams: Promise<{ 
                     )}
                     {isParent ? (
                       <div className="mt-3 space-y-2 border-t border-line pt-3">
-                        <ApproveWish wishId={w.id} defaultDate={addDays(t, 1)} />
+                        <ApproveWish wishId={w.id} defaultDate={addDays(t, 1)} members={memberOpts} cookId={w.cook_id} />
                         <form action={rejectWish} className="flex gap-2">
                           <input type="hidden" name="id" value={w.id} />
                           <input name="note" className="input flex-1 py-2 text-sm" placeholder="Syy (valinnainen)" />

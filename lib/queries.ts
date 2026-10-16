@@ -56,7 +56,7 @@ export async function getRecipe(familyId: number, id: number) {
 export async function getMeals(familyId: number, from: string, to: string) {
   const sql = await db();
   return sql<Meal[]>`
-    SELECT id, date, slot, title, recipe_id, note, wish_id FROM meals
+    SELECT id, date, slot, title, cook_id, recipe_id, note, wish_id FROM meals
     WHERE family_id = ${familyId} AND date BETWEEN ${from} AND ${to}
     ORDER BY date, (slot = 'ilta'), id`;
 }
@@ -64,7 +64,7 @@ export async function getMeals(familyId: number, from: string, to: string) {
 export async function getWishes(familyId: number) {
   const sql = await db();
   return sql<Wish[]>`
-    SELECT w.id, w.title, w.note, w.recipe_id, w.requested_by, w.status, w.planned_date, w.decision_note,
+    SELECT w.id, w.title, w.note, w.recipe_id, w.requested_by, w.cook_id, w.status, w.planned_date, w.decision_note,
       w.created_at::text,
       COALESCE(array_agg(v.member_id) FILTER (WHERE v.member_id IS NOT NULL), '{}') AS votes
     FROM wishes w LEFT JOIN wish_votes v ON v.wish_id = w.id
