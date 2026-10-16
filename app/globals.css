@@ -1,0 +1,125 @@
+@import "tailwindcss";
+
+@theme {
+  --color-cream: #fff8ef;
+  --color-ink: #2b2118;
+  --color-muted: #7a6a5c;
+  --color-line: #f0e2d2;
+  --color-brand: #f97316;
+  --color-brand-dark: #c2410c;
+  --color-brand-soft: #ffedd5;
+  --color-leaf: #16a34a;
+  --color-leaf-soft: #dcfce7;
+  --color-berry: #db2777;
+  --color-berry-soft: #fce7f3;
+  --color-sky: #0284c7;
+  --color-sky-soft: #e0f2fe;
+  --color-grape: #7c3aed;
+  --color-grape-soft: #ede9fe;
+  --font-sans: "Nunito", ui-rounded, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  background: var(--color-cream);
+  color: var(--color-ink);
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+body {
+  font-family: var(--font-sans);
+}
+
+@layer components {
+/* Yhtenäiset lomake-elementit */
+.input {
+  width: 100%;
+  border-radius: 0.9rem;
+  border: 2px solid var(--color-line);
+  background: white;
+  padding: 0.7rem 0.9rem;
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.input:focus {
+  border-color: var(--color-brand);
+}
+textarea.input {
+  line-height: 1.45;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border-radius: 999px;
+  padding: 0.7rem 1.2rem;
+  font-weight: 800;
+  background: var(--color-brand);
+  color: white;
+  transition: transform 0.08s, background 0.15s, opacity 0.15s;
+  box-shadow: 0 2px 0 var(--color-brand-dark);
+}
+.btn:active {
+  transform: translateY(1px);
+  box-shadow: none;
+}
+.btn:disabled {
+  opacity: 0.55;
+}
+.btn-ghost {
+  background: white;
+  color: var(--color-ink);
+  border: 2px solid var(--color-line);
+  box-shadow: none;
+}
+.btn-green {
+  background: var(--color-leaf);
+  box-shadow: 0 2px 0 #15803d;
+}
+.btn-sm {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.875rem;
+}
+
+.card {
+  background: white;
+  border-radius: 1.25rem;
+  border: 1px solid var(--color-line);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.03);
+}
+
+.label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.3rem;
+}
+
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+
+@keyframes pop {
+  0% { transform: scale(0.6); }
+  60% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+.pop {
+  animation: pop 0.25s ease-out;
+}
