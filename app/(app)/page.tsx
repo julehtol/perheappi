@@ -5,6 +5,7 @@ import { addDays, dayLabel, today } from "@/lib/dates";
 import { getEvents, getMeals, getMembers, getShoppingItems, getWishes } from "@/lib/queries";
 import { requireMember } from "@/lib/session";
 import { QuickAdd } from "./ostokset/QuickAdd";
+import { showSlots, SLOT_SHORT } from "@/lib/meals";
 
 function greeting() {
   const h = Number(new Intl.DateTimeFormat("fi-FI", { hour: "numeric", hour12: false, timeZone: "Europe/Helsinki" }).format(new Date()));
@@ -42,12 +43,17 @@ export default async function Home() {
       <Link href="/ruoka" className="card block bg-gradient-to-br from-brand-soft to-white p-5">
         <div className="label">Tänään syödään</div>
         {todayMeals.length ? (
-          todayMeals.map((m) => <div key={m.id} className="text-2xl font-black">🍽️ {m.title}</div>)
+          todayMeals.map((m) => (
+            <div key={m.id} className="text-2xl font-black">
+              {showSlots(todayMeals) ? <span className="mr-2 text-sm font-black text-muted">{SLOT_SHORT[m.slot]}</span> : "🍽️ "}
+              {m.title}
+            </div>
+          ))
         ) : (
           <div className="text-xl font-bold text-muted">Ei vielä päätetty 🤔</div>
         )}
         {tomorrowMeals.length > 0 && (
-          <div className="mt-2 text-sm text-muted">Huomenna: <b className="text-ink">{tomorrowMeals.map((m) => m.title).join(", ")}</b></div>
+          <div className="mt-2 text-sm text-muted">Huomenna: <b className="text-ink">{tomorrowMeals.map((m) => (showSlots(tomorrowMeals) ? `${m.title} (${m.slot === "paiva" ? "päivä" : "ilta"})` : m.title)).join(", ")}</b></div>
         )}
       </Link>
 

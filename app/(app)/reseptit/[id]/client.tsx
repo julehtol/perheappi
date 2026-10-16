@@ -2,6 +2,7 @@
 
 import { useActionState, useState, useTransition } from "react";
 import { addIngredientsToShopping, createWish, saveMeal } from "@/app/actions";
+import { SlotPicker } from "@/components/SlotPicker";
 import { FormError, Submit } from "@/components/Submit";
 
 export function Ingredients({ lines, title }: { lines: string[]; title: string }) {
@@ -58,6 +59,7 @@ export function RecipeActions({ recipeId, isParent, defaultDate }: { recipeId: n
         <input type="hidden" name="recipe_id" value={recipeId} />
         <input type="date" name="date" defaultValue={defaultDate} className="input w-auto flex-1" required />
         <Submit className="btn">Lisää</Submit>
+        <div className="w-full"><SlotPicker /></div>
         <div className="w-full"><FormError state={mealState} /></div>
       </form>
     ) : (

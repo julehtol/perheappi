@@ -56,9 +56,9 @@ export async function getRecipe(familyId: number, id: number) {
 export async function getMeals(familyId: number, from: string, to: string) {
   const sql = await db();
   return sql<Meal[]>`
-    SELECT id, date, title, recipe_id, note, wish_id FROM meals
+    SELECT id, date, slot, title, recipe_id, note, wish_id FROM meals
     WHERE family_id = ${familyId} AND date BETWEEN ${from} AND ${to}
-    ORDER BY date, id`;
+    ORDER BY date, (slot = 'ilta'), id`;
 }
 
 export async function getWishes(familyId: number) {

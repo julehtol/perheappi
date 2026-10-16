@@ -2,11 +2,13 @@
 
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { approveWish, createWish, saveMeal, toggleWishVote } from "@/app/actions";
+import { SlotPicker } from "@/components/SlotPicker";
 import { FormError, Submit } from "@/components/Submit";
+import type { MealSlot } from "@/lib/types";
 
 type RecipeOpt = { id: number; title: string; emoji: string };
 
-export function AddMeal({ date, recipes, hasMeal }: { date: string; recipes: RecipeOpt[]; hasMeal: boolean }) {
+export function AddMeal({ date, recipes, hasMeal, defaultSlot }: { date: string; recipes: RecipeOpt[]; hasMeal: boolean; defaultSlot: MealSlot }) {
   const [open, setOpen] = useState(false);
   const [state, action] = useActionState(saveMeal, undefined);
   useEffect(() => {
@@ -16,12 +18,13 @@ export function AddMeal({ date, recipes, hasMeal }: { date: string; recipes: Rec
   if (!open)
     return (
       <button onClick={() => setOpen(true)} className={`mt-1 text-sm font-bold ${hasMeal ? "text-muted" : "text-brand-dark"}`}>
-        {hasMeal ? "+ lisää toinen" : "+ Lisää ruoka"}
+        {hasMeal ? (defaultSlot === "paiva" ? "+ Lisää päiväruoka" : "+ lisää toinen") : "+ Lisää ruoka"}
       </button>
     );
   return (
     <form action={action} className="mt-2 space-y-2">
       <input type="hidden" name="date" value={date} />
+      <SlotPicker defaultSlot={defaultSlot} />
       <input name="title" className="input" placeholder="Ruoan nimi" autoFocus />
       {recipes.length > 0 && (
         <select name="recipe_id" className="input" defaultValue="">
@@ -86,6 +89,7 @@ export function ApproveWish({ wishId, defaultDate }: { wishId: number; defaultDa
       <input type="hidden" name="id" value={wishId} />
       <input type="date" name="date" defaultValue={defaultDate} className="input w-auto flex-1 py-2" required />
       <Submit className="btn btn-green btn-sm">✓ Hyväksy</Submit>
+      <div className="w-full"><SlotPicker /></div>
       <div className="w-full"><FormError state={state} /></div>
     </form>
   );

@@ -5,6 +5,7 @@ import { addDays, addMonths, dayLabel, isDate, monthLabel, monthOf, startOfWeek,
 import { getEvents, getMeals, getMembers } from "@/lib/queries";
 import { requireMember } from "@/lib/session";
 import type { CalendarEvent } from "@/lib/types";
+import { showSlots, SLOT_SHORT } from "@/lib/meals";
 
 function covers(e: CalendarEvent, d: string) {
   return e.date <= d && (e.end_date ?? e.date) >= d;
@@ -77,7 +78,7 @@ export default async function Kalenteri({ searchParams }: { searchParams: Promis
       <section>
         <h2 className="mb-2 text-xl font-black">{dayLabel(selected)}</h2>
         {meals.length > 0 && (
-          <div className="mb-2 rounded-2xl bg-brand-soft px-4 py-2 text-sm font-bold">🍽️ {meals.map((m) => m.title).join(", ")}</div>
+          <div className="mb-2 rounded-2xl bg-brand-soft px-4 py-2 text-sm font-bold">🍽️ {meals.map((m) => (showSlots(meals) ? `${SLOT_SHORT[m.slot]}: ${m.title}` : m.title)).join(" · ")}</div>
         )}
         {dayEvents.length === 0 ? (
           <div className="card p-6 text-center text-muted">

@@ -96,6 +96,7 @@ CREATE TABLE IF NOT EXISTS meals (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS meals_family_date ON meals(family_id, date);
+ALTER TABLE meals ADD COLUMN IF NOT EXISTS slot text NOT NULL DEFAULT 'ilta';
 
 CREATE TABLE IF NOT EXISTS wishes (
   id serial PRIMARY KEY,

@@ -4,6 +4,7 @@ import { PageTitle } from "@/components/PageTitle";
 import { addDays, dayLabel, isDate, shortDate, startOfWeek, today, weekNumber } from "@/lib/dates";
 import { getMeals, getMembers, getRecipes, getWishes } from "@/lib/queries";
 import { requireMember } from "@/lib/session";
+import { showSlots, SLOT_SHORT } from "@/lib/meals";
 import { deleteMeal, deleteWish, rejectWish } from "@/app/actions";
 import { AddMeal, ApproveWish, VoteButton, WishForm } from "./client";
 
@@ -53,6 +54,9 @@ export default async function Ruoka({ searchParams }: { searchParams: Promise<{ 
             {Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)).map((d) => {
               const dayMeals = meals.filter((m) => m.date === d);
               const past = d < t;
+              const slots = showSlots(dayMeals);
+              // Jos iltaruoka on jo päätetty, seuraava lisäys on todennäköisimmin päiväruoka.
+              const nextSlot = dayMeals.some((m) => m.slot === "ilta") && !slots ? "paiva" : "ilta";
               return (
                 <li key={d} className={`card p-3 ${d === t ? "ring-2 ring-brand" : ""} ${past ? "opacity-60" : ""}`}>
                   <div className="flex items-baseline justify-between">
@@ -61,6 +65,7 @@ export default async function Ruoka({ searchParams }: { searchParams: Promise<{ 
                   {dayMeals.length === 0 && !isParent && <div className="py-1 text-muted">–</div>}
                   {dayMeals.map((m) => (
                     <div key={m.id} className="flex items-center gap-2 py-1">
+                      {slots && <span className="w-16 shrink-0 text-xs font-black text-muted">{SLOT_SHORT[m.slot]}</span>}
                       {m.recipe_id ? (
                         <Link href={`/reseptit/${m.recipe_id}`} className="flex-1 text-lg font-black">
                           {recipes.find((r) => r.id === m.recipe_id)?.emoji ?? "🍽️"} {m.title} <span className="text-sm text-brand-dark">📖</span>
@@ -78,7 +83,7 @@ export default async function Ruoka({ searchParams }: { searchParams: Promise<{ 
                     </div>
                   ))}
                   {dayMeals.some((m) => m.note) && <div className="text-sm text-muted">{dayMeals.map((m) => m.note).filter(Boolean).join(" · ")}</div>}
-                  {isParent && <AddMeal date={d} recipes={recipeOpts} hasMeal={dayMeals.length > 0} />}
+                  {isParent && <AddMeal date={d} recipes={recipeOpts} hasMeal={dayMeals.length > 0} defaultSlot={nextSlot} />}
                 </li>
               );
             })}

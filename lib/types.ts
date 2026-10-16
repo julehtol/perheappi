@@ -36,9 +36,12 @@ export type Recipe = {
   created_by: number | null;
 };
 
+export type MealSlot = "paiva" | "ilta";
+
 export type Meal = {
   id: number;
   date: string;
+  slot: MealSlot;
   title: string;
   recipe_id: number | null;
   note: string | null;
