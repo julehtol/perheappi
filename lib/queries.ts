@@ -53,11 +53,13 @@ export async function getRecipe(familyId: number, id: number) {
   return r ?? null;
 }
 
-export async function getMeals(familyId: number, from: string, to: string) {
+/** Ateriat aikaväliltä. Oletuksena vain hyväksytyt; ruokalistalla näytetään myös ehdotukset. */
+export async function getMeals(familyId: number, from: string, to: string, { withProposals = false } = {}) {
   const sql = await db();
   return sql<Meal[]>`
-    SELECT id, date, slot, title, cook_id, recipe_id, note, wish_id FROM meals
+    SELECT id, date, slot, title, cook_id, recipe_id, note, wish_id, status, created_by FROM meals
     WHERE family_id = ${familyId} AND date BETWEEN ${from} AND ${to}
+      ${withProposals ? sql`` : sql`AND status = 'approved'`}
     ORDER BY date, (slot = 'ilta'), id`;
 }
 
@@ -89,4 +91,11 @@ export async function getEvent(familyId: number, id: number) {
     SELECT id, title, date, end_date, start_time, end_time, note, emoji, participants, created_by
     FROM events WHERE family_id = ${familyId} AND id = ${id}`;
   return e ?? null;
+}
+
+/** Odottavat ruokalistaehdotukset (vanhimmasta päivästä alkaen). */
+export async function getMealProposals(familyId: number) {
+  const sql = await db();
+  return sql<{ date: string; title: string }[]>`
+    SELECT date, title FROM meals WHERE family_id = ${familyId} AND status = 'proposed' ORDER BY date, id`;
 }

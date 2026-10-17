@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Avatar } from "@/components/Avatar";
 import { InstallHint, PushPrompt } from "@/components/Push";
 import { addDays, dayLabel, today } from "@/lib/dates";
-import { getEvents, getMeals, getMembers, getShoppingItems, getWishes } from "@/lib/queries";
+import { getEvents, getMealProposals, getMeals, getMembers, getShoppingItems, getWishes } from "@/lib/queries";
 import { requireMember } from "@/lib/session";
 import { QuickAdd } from "./ostokset/QuickAdd";
 import { SLOT_SHORT } from "@/lib/meals";
@@ -18,12 +18,13 @@ function greeting() {
 export default async function Home() {
   const me = await requireMember();
   const t = today();
-  const [meals, events, items, wishes, members] = await Promise.all([
+  const [meals, events, items, wishes, members, proposals] = await Promise.all([
     getMeals(me.family_id, t, addDays(t, 1)),
     getEvents(me.family_id, t, addDays(t, 7)),
     getShoppingItems(me.family_id),
     getWishes(me.family_id),
     getMembers(me.family_id),
+    getMealProposals(me.family_id),
   ]);
   const byId = new Map(members.map((m) => [m.id, m]));
   const open = items.filter((i) => !i.done);
@@ -61,6 +62,17 @@ export default async function Home() {
           <div className="mt-2 text-sm text-muted">Huomenna: <b className="text-ink">{tomorrowMeals.map((m) => `${SLOT_SHORT[m.slot]}: ${m.title}${m.cook_id && byId.get(m.cook_id) ? ` (👩‍🍳 ${byId.get(m.cook_id)!.name})` : ""}`).join(" · ")}</b></div>
         )}
       </Link>
+
+      {me.role === "parent" && proposals.length > 0 && (
+        <Link href={`/ruoka?viikko=${proposals[0].date}`} className="card flex items-center gap-3 bg-grape-soft p-4">
+          <span className="text-3xl">💡</span>
+          <div className="flex-1">
+            <div className="font-black">{proposals.length} ruokalistaehdotus{proposals.length > 1 ? "ta" : ""} odottaa hyväksyntää</div>
+            <div className="text-sm text-muted">{proposals.slice(0, 3).map((p) => p.title).join(", ")}</div>
+          </div>
+          <span className="text-xl">›</span>
+        </Link>
+      )}
 
       {pending.length > 0 && (
         <Link href="/ruoka?tab=toiveet" className="card flex items-center gap-3 bg-grape-soft p-4">

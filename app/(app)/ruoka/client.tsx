@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
-import { approveWish, createWish, deleteMeal, saveMeal, toggleWishVote } from "@/app/actions";
+import { approveMeals, approveWish, createWish, deleteMeal, rejectMeal, saveMeal, toggleWishVote } from "@/app/actions";
 import { CookBadge, CookPicker, type MemberLite } from "@/components/CookPicker";
 import { SlotPicker } from "@/components/SlotPicker";
 import { FormError, Submit } from "@/components/Submit";
@@ -53,12 +53,13 @@ function MealForm({
   );
 }
 
-export function AddMeal(props: { date: string; recipes: RecipeOpt[]; members: MemberLite[]; hasMeal: boolean; defaultSlot: MealSlot }) {
+export function AddMeal({ propose, ...props }: { date: string; recipes: RecipeOpt[]; members: MemberLite[]; hasMeal: boolean; defaultSlot: MealSlot; propose?: boolean }) {
   const [open, setOpen] = useState(false);
+  const verb = propose ? "Ehdota" : "Lisää";
   if (!open)
     return (
       <button onClick={() => setOpen(true)} className={`mt-1 text-sm font-bold ${props.hasMeal ? "text-muted" : "text-brand-dark"}`}>
-        {props.hasMeal ? (props.defaultSlot === "paiva" ? "+ Lisää päiväruoka" : "+ Lisää iltaruoka") : "+ Lisää ruoka"}
+        + {props.hasMeal ? `${verb} ${props.defaultSlot === "paiva" ? "päiväruoka" : "iltaruoka"}` : `${verb} ruoka`}
       </button>
     );
   return <MealForm {...props} onDone={() => setOpen(false)} />;
@@ -69,6 +70,8 @@ export function MealItem({
   meal,
   recipeEmoji,
   cook,
+  proposer,
+  isParent,
   canEdit,
   recipes,
   members,
@@ -76,13 +79,16 @@ export function MealItem({
   meal: Meal;
   recipeEmoji?: string;
   cook?: MemberLite | null;
+  proposer?: MemberLite | null;
+  isParent: boolean;
   canEdit: boolean;
   recipes: RecipeOpt[];
   members: MemberLite[];
 }) {
   const [editing, setEditing] = useState(false);
+  const proposed = meal.status === "proposed";
   return (
-    <div className="py-1.5">
+    <div className={proposed ? "my-1.5 rounded-2xl border-2 border-dashed border-grape/40 bg-grape-soft/60 px-2 py-1.5" : "py-1.5"}>
       <div className="flex items-start gap-2">
         <span className="mt-1 w-16 shrink-0 text-xs font-black text-muted">{SLOT_SHORT[meal.slot]}</span>
         <div className="min-w-0 flex-1">
@@ -97,6 +103,9 @@ export function MealItem({
             <CookBadge cook={cook} />
             {meal.wish_id && <span className="text-xs font-bold text-grape">🙋 toive</span>}
           </div>
+          {proposed && (
+            <div className="text-xs font-black text-grape">💡 Ehdotus{proposer ? ` – ${proposer.name}` : ""} · odottaa hyväksyntää</div>
+          )}
           {meal.note && <div className="text-sm text-muted">{meal.note}</div>}
         </div>
         {canEdit && !editing && (
@@ -109,6 +118,18 @@ export function MealItem({
           </div>
         )}
       </div>
+      {proposed && isParent && !editing && (
+        <div className="mt-1.5 flex gap-2">
+          <form action={approveMeals} className="flex-1">
+            <input type="hidden" name="id" value={meal.id} />
+            <button className="btn btn-green btn-sm w-full">✓ Hyväksy</button>
+          </form>
+          <form action={rejectMeal} className="flex-1">
+            <input type="hidden" name="id" value={meal.id} />
+            <button className="btn btn-ghost btn-sm w-full">Ei nyt</button>
+          </form>
+        </div>
+      )}
       {editing && (
         <MealForm date={meal.date} recipes={recipes} members={members} defaultSlot={meal.slot} meal={meal} onDone={() => setEditing(false)} />
       )}

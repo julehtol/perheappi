@@ -10,10 +10,11 @@ export const dynamic = "force-dynamic";
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const me = await requireMember();
   const sql = await db();
-  const [counts] = await sql<{ shopping: number; wishes: number }[]>`
+  const [counts] = await sql<{ shopping: number; wishes: number; proposals: number }[]>`
     SELECT
       (SELECT count(*)::int FROM shopping_items WHERE family_id = ${me.family_id} AND NOT done) AS shopping,
-      (SELECT count(*)::int FROM wishes WHERE family_id = ${me.family_id} AND status = 'pending') AS wishes`;
+      (SELECT count(*)::int FROM wishes WHERE family_id = ${me.family_id} AND status = 'pending') AS wishes,
+      (SELECT count(*)::int FROM meals WHERE family_id = ${me.family_id} AND status = 'proposed') AS proposals`;
 
   return (
     <div className="mx-auto min-h-dvh max-w-xl">
@@ -29,7 +30,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
       </header>
       <main className="px-4 pb-28 pt-2">{children}</main>
-      <BottomNav badges={{ "/ostokset": counts.shopping, "/ruoka": me.role === "parent" ? counts.wishes : 0 }} />
+      <BottomNav badges={{ "/ostokset": counts.shopping, "/ruoka": me.role === "parent" ? counts.wishes + counts.proposals : 0 }} />
       <AutoRefresh />
     </div>
   );

@@ -402,8 +402,10 @@ export async function deleteRecipe(fd: FormData) {
 
 /* ---------- Ruokalista ---------- */
 
+/** Vanhemman lisäämä ateria menee suoraan listalle, lapsen ateria on ehdotus. */
 export async function saveMeal(_: FormState, fd: FormData): Promise<FormState> {
-  const me = await requireParent();
+  const me = await requireMember();
+  const isParent = me.role === "parent";
   const id = int(fd, "id");
   const date = str(fd, "date", 10);
   const recipeId = int(fd, "recipe_id");
@@ -419,25 +421,86 @@ export async function saveMeal(_: FormState, fd: FormData): Promise<FormState> {
   }
   if (!title) return { error: "Kirjoita ruoan nimi tai valitse resepti." };
   if (id) {
-    await sql`UPDATE meals SET date = ${date}, slot = ${slot}, title = ${title}, cook_id = ${cookId}, recipe_id = ${recipeId}, note = ${note}
-      WHERE id = ${id} AND family_id = ${me.family_id}`;
+    // Lapsi voi muokata vain omia, vielä hyväksymättömiä ehdotuksiaan.
+    const res = await sql`UPDATE meals SET date = ${date}, slot = ${slot}, title = ${title}, cook_id = ${cookId}, recipe_id = ${recipeId}, note = ${note}
+      WHERE id = ${id} AND family_id = ${me.family_id}
+        AND (${isParent} OR (created_by = ${me.id} AND status = 'proposed'))`;
+    if (res.count === 0) return { error: "Tätä ruokaa et voi muokata." };
   } else {
-    await sql`INSERT INTO meals (family_id, date, slot, title, cook_id, recipe_id, note, created_by)
-      VALUES (${me.family_id}, ${date}, ${slot}, ${title}, ${cookId}, ${recipeId}, ${note}, ${me.id})`;
+    const status = isParent ? "approved" : "proposed";
+    await sql`INSERT INTO meals (family_id, date, slot, title, cook_id, recipe_id, note, created_by, status)
+      VALUES (${me.family_id}, ${date}, ${slot}, ${title}, ${cookId}, ${recipeId}, ${note}, ${me.id}, ${status})`;
     const cook = await memberName(cookId);
-    notify(
-      { familyId: me.family_id, kind: "meals", exclude: me.id },
-      { title: "🍽️ Ruokalistaa päivitetty", body: `${dayLabel(date)} (${SLOT_LABEL[slot]}): ${title}${cook ? ` – kokkina ${cook}` : ""}`, url: `/ruoka?viikko=${date}`, tag: "meals" },
-    );
+    const body = `${dayLabel(date)} (${SLOT_LABEL[slot]}): ${title}${cook ? ` – kokkina ${cook}` : ""}`;
+    if (isParent) {
+      notify(
+        { familyId: me.family_id, kind: "meals", exclude: me.id },
+        { title: "🍽️ Ruokalistaa päivitetty", body, url: `/ruoka?viikko=${date}`, tag: "meals" },
+      );
+    } else {
+      notify(
+        { familyId: me.family_id, kind: "meals", exclude: me.id, onlyParents: true },
+        { title: `💡 ${me.name} ehdottaa ruokalistaan`, body, url: `/ruoka?viikko=${date}`, tag: `meal-proposals-${me.id}` },
+      );
+    }
   }
   refresh();
   return { ok: true };
 }
 
 export async function deleteMeal(fd: FormData) {
+  const me = await requireMember();
+  const sql = await db();
+  await sql`DELETE FROM meals WHERE id = ${int(fd, "id")} AND family_id = ${me.family_id}
+    AND (${me.role === "parent"} OR (created_by = ${me.id} AND status = 'proposed'))`;
+  refresh();
+}
+
+/** Hyväksyy yksittäisen ehdotuksen (id) tai kaikki ehdotukset aikaväliltä (from–to). */
+export async function approveMeals(fd: FormData) {
+  const me = await requireParent();
+  const id = int(fd, "id");
+  const from = str(fd, "from", 10);
+  const to = str(fd, "to", 10);
+  const sql = await db();
+  let rows: { created_by: number | null; title: string; date: string }[];
+  if (id) {
+    rows = await sql`UPDATE meals SET status = 'approved'
+      WHERE id = ${id} AND family_id = ${me.family_id} AND status = 'proposed' RETURNING created_by, title, date`;
+  } else if (isDate(from) && isDate(to)) {
+    rows = await sql`UPDATE meals SET status = 'approved'
+      WHERE family_id = ${me.family_id} AND status = 'proposed' AND date BETWEEN ${from} AND ${to}
+      RETURNING created_by, title, date`;
+  } else return;
+  // Yksi ilmoitus kullekin ehdottajalle.
+  const byProposer = new Map<number, typeof rows>();
+  for (const r of rows) if (r.created_by && r.created_by !== me.id) byProposer.set(r.created_by, [...(byProposer.get(r.created_by) ?? []), r]);
+  for (const [proposer, list] of byProposer) {
+    notify(
+      { familyId: me.family_id, kind: "meals", onlyMembers: [proposer] },
+      {
+        title: list.length > 1 ? `🎉 ${list.length} ruokaehdotustasi hyväksyttiin!` : "🎉 Ruokaehdotuksesi hyväksyttiin!",
+        body: list.map((r) => r.title).join(", "),
+        url: `/ruoka?viikko=${list[0].date}`,
+        tag: `meal-approved-${proposer}`,
+      },
+    );
+  }
+  refresh();
+}
+
+export async function rejectMeal(fd: FormData) {
   const me = await requireParent();
   const sql = await db();
-  await sql`DELETE FROM meals WHERE id = ${int(fd, "id")} AND family_id = ${me.family_id}`;
+  const [m] = await sql<{ created_by: number | null; title: string; date: string }[]>`
+    DELETE FROM meals WHERE id = ${int(fd, "id")} AND family_id = ${me.family_id} AND status = 'proposed'
+    RETURNING created_by, title, date`;
+  if (m?.created_by && m.created_by !== me.id) {
+    notify(
+      { familyId: me.family_id, kind: "meals", onlyMembers: [m.created_by] },
+      { title: "Ruokaehdotus ei mennyt läpi tällä kertaa", body: `${m.title} (${dayLabel(m.date).toLowerCase()})`, url: `/ruoka?viikko=${m.date}`, tag: `meal-rejected-${m.created_by}` },
+    );
+  }
   refresh();
 }
 

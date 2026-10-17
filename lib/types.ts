@@ -47,6 +47,9 @@ export type Meal = {
   recipe_id: number | null;
   note: string | null;
   wish_id: number | null;
+  /** Lapsen ehdotus odottaa vanhemman hyväksyntää. */
+  status: "approved" | "proposed";
+  created_by: number | null;
 };
 
 export type Wish = {

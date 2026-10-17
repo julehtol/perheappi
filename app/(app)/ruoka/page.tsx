@@ -4,7 +4,7 @@ import { PageTitle } from "@/components/PageTitle";
 import { addDays, dayLabel, isDate, shortDate, startOfWeek, today, weekNumber } from "@/lib/dates";
 import { getMeals, getMembers, getRecipes, getWishes } from "@/lib/queries";
 import { requireMember } from "@/lib/session";
-import { deleteWish, rejectWish } from "@/app/actions";
+import { approveMeals, deleteWish, rejectWish } from "@/app/actions";
 import { CookBadge } from "@/components/CookPicker";
 import { AddMeal, ApproveWish, MealItem, VoteButton, WishForm } from "./client";
 
@@ -17,7 +17,7 @@ export default async function Ruoka({ searchParams }: { searchParams: Promise<{ 
   const weekEnd = addDays(weekStart, 6);
 
   const [meals, wishes, recipes, members] = await Promise.all([
-    getMeals(me.family_id, weekStart, weekEnd),
+    getMeals(me.family_id, weekStart, weekEnd, { withProposals: true }),
     getWishes(me.family_id),
     getRecipes(me.family_id),
     getMembers(me.family_id),
@@ -28,6 +28,8 @@ export default async function Ruoka({ searchParams }: { searchParams: Promise<{ 
   const recipeOpts = recipes.map((r) => ({ id: r.id, title: r.title, emoji: r.emoji }));
   const isParent = me.role === "parent";
   const memberOpts = members.map(({ id, name, emoji, color }) => ({ id, name, emoji, color }));
+  const proposals = meals.filter((m) => m.status === "proposed");
+  const proposers = [...new Set(proposals.map((m) => m.created_by))].map((id) => (id ? byId.get(id)?.name : null)).filter(Boolean);
 
   return (
     <div className="space-y-4">
@@ -51,6 +53,27 @@ export default async function Ruoka({ searchParams }: { searchParams: Promise<{ 
             </div>
             <Link href={`/ruoka?viikko=${addDays(weekStart, 7)}`} className="btn btn-ghost btn-sm">›</Link>
           </div>
+          {isParent && proposals.length > 0 && (
+            <div className="card flex items-center gap-3 border-grape/30 bg-grape-soft p-4">
+              <span className="text-3xl">💡</span>
+              <div className="flex-1">
+                <div className="font-black">
+                  {proposers.join(" ja ") || "Joku"} ehdotti {proposals.length} {proposals.length === 1 ? "ruokaa" : "ruokaa"} tälle viikolle
+                </div>
+                <div className="text-sm text-muted">Hyväksy tai hylkää ne alla yksitellen – tai kaikki kerralla.</div>
+              </div>
+              <form action={approveMeals}>
+                <input type="hidden" name="from" value={weekStart} />
+                <input type="hidden" name="to" value={weekEnd} />
+                <button className="btn btn-green btn-sm">✓ Hyväksy kaikki</button>
+              </form>
+            </div>
+          )}
+          {!isParent && (
+            <p className="rounded-2xl bg-white/80 px-4 py-3 text-sm font-semibold">
+              💡 Voit suunnitella ruokalistaa! Lisää ruokia päiville – vanhemmat hyväksyvät ehdotuksesi.
+            </p>
+          )}
           <ul className="space-y-2">
             {Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)).map((d) => {
               const dayMeals = meals.filter((m) => m.date === d);
@@ -62,19 +85,20 @@ export default async function Ruoka({ searchParams }: { searchParams: Promise<{ 
                   <div className="flex items-baseline justify-between">
                     <div className="text-sm font-black text-muted">{dayLabel(d)}{d === t || d === addDays(t, 1) || d === addDays(t, -1) ? ` ${shortDate(d)}` : ""}</div>
                   </div>
-                  {dayMeals.length === 0 && !isParent && <div className="py-1 text-muted">–</div>}
                   {dayMeals.map((m) => (
                     <MealItem
                       key={m.id}
                       meal={m}
                       recipeEmoji={recipes.find((r) => r.id === m.recipe_id)?.emoji}
                       cook={m.cook_id ? byId.get(m.cook_id) : null}
-                      canEdit={isParent}
+                      proposer={m.status === "proposed" && m.created_by ? byId.get(m.created_by) : null}
+                      isParent={isParent}
+                      canEdit={isParent || (m.status === "proposed" && m.created_by === me.id)}
                       recipes={recipeOpts}
                       members={memberOpts}
                     />
                   ))}
-                  {isParent && <AddMeal date={d} recipes={recipeOpts} members={memberOpts} hasMeal={dayMeals.length > 0} defaultSlot={nextSlot} />}
+                  {!past && <AddMeal date={d} recipes={recipeOpts} members={memberOpts} hasMeal={dayMeals.length > 0} defaultSlot={nextSlot} propose={!isParent} />}
                 </li>
               );
             })}
