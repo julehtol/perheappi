@@ -40,3 +40,11 @@ npm run dev
 ```
 
 Kuvakkeet luodaan uudelleen komennolla `node scripts/icons.mjs`.
+
+### Uuden perheen luontisalasanan vaihtaminen
+
+1. Vercel → projekti → **Settings → Environment Variables** → muokkaa `PERHE_SALASANA` (ympäristö: Production).
+2. Julkaise uudelleen: **Deployments**-välilehti → ylimmän julkaisun **⋯** → **Redeploy**.
+   Vaihtoehtoisesti mikä tahansa uusi commit `main`-haaraan julkaisee sovelluksen uudelleen.
+
+Vaihto ei vaikuta jo luotuihin perheisiin.
