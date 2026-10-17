@@ -7,6 +7,7 @@ import { guessCategory } from "@/lib/categories";
 import { db } from "@/lib/db";
 import { dayLabel, isDate } from "@/lib/dates";
 import { notify, vapidKeys } from "@/lib/push";
+import { blocked, checkFamilyPassword, clientIp, familyPasswordConfigured, recordFailure } from "@/lib/ratelimit";
 import {
   checkPin,
   clearSession,
@@ -77,6 +78,14 @@ export async function createFamily(_: FormState, fd: FormData): Promise<FormStat
   const name = str(fd, "name", 40);
   const emoji = str(fd, "emoji", 16) || "🙂";
   const pin = str(fd, "pin", 8);
+  if (!familyPasswordConfigured()) return { error: "Uusien perheiden luonti ei ole käytössä." };
+  const ipKey = [`create:${await clientIp()}`];
+  const limit = await blocked(ipKey);
+  if (limit) return { error: limit };
+  if (!checkFamilyPassword(str(fd, "password", 100))) {
+    await recordFailure(ipKey);
+    return { error: "Väärä salasana. Kysy salasana sovelluksen ylläpitäjältä." };
+  }
   if (!familyName || !name) return { error: "Anna perheen nimi ja oma nimesi." };
   if (!validPin(pin)) return { error: "PIN-koodin pitää olla 4–8 numeroa." };
   const sql = await db();
@@ -92,9 +101,15 @@ export async function createFamily(_: FormState, fd: FormData): Promise<FormStat
 export async function joinFamily(_: FormState, fd: FormData): Promise<FormState> {
   const code = str(fd, "code", 20).toUpperCase().replace(/[^A-Z0-9]/g, "");
   if (!code) return { error: "Anna kutsukoodi." };
+  const ipKey = [`join:${await clientIp()}`];
+  const limit = await blocked(ipKey);
+  if (limit) return { error: limit };
   const sql = await db();
   const [family] = await sql<{ id: number }[]>`SELECT id FROM families WHERE invite_code = ${code}`;
-  if (!family) return { error: "Koodilla ei löytynyt perhettä. Tarkista koodi." };
+  if (!family) {
+    await recordFailure(ipKey);
+    return { error: "Koodilla ei löytynyt perhettä. Tarkista koodi." };
+  }
   await setFamilyCookie(family.id);
   redirect("/aloitus");
 }
@@ -108,7 +123,16 @@ export async function chooseProfile(_: FormState, fd: FormData): Promise<FormSta
   const [m] = await sql<{ id: number; pin_hash: string | null }[]>`
     SELECT id, pin_hash FROM members WHERE id = ${memberId} AND family_id = ${familyId}`;
   if (!m) return { error: "Profiilia ei löytynyt." };
-  if (m.pin_hash && !checkPin(pin, m.pin_hash)) return { error: "Väärä PIN-koodi." };
+  if (m.pin_hash) {
+    // Rajoitetaan sekä laitetta että profiilia, ettei PIN-koodia voi kokeilla läpi.
+    const keys = [`pin:${await clientIp()}`, `pin-member:${m.id}`];
+    const limit = await blocked(keys);
+    if (limit) return { error: limit };
+    if (!checkPin(pin, m.pin_hash)) {
+      await recordFailure(keys);
+      return { error: "Väärä PIN-koodi." };
+    }
+  }
   await setSession(m.id, familyId);
   redirect("/");
 }

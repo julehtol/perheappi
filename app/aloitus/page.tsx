@@ -39,11 +39,12 @@ export default async function Aloitus({ searchParams }: { searchParams: Promise<
         <h2 className="text-xl font-black">Liity perheeseen</h2>
         <p className="mb-3 text-sm text-muted">Sait kutsukoodin tai -linkin perheenjäseneltä.</p>
         {virhe === "koodi" && <p className="mb-3 rounded-xl bg-berry-soft px-3 py-2 text-sm font-semibold text-berry">Kutsulinkki ei ole enää voimassa.</p>}
+        {virhe === "raja" && <p className="mb-3 rounded-xl bg-berry-soft px-3 py-2 text-sm font-semibold text-berry">Liian monta väärää yritystä. Odota vartti ja yritä uudelleen.</p>}
         <JoinForm />
       </section>
       <section className="card mt-4 p-5">
         <h2 className="text-xl font-black">Luo uusi perhe</h2>
-        <p className="mb-3 text-sm text-muted">Sinusta tulee perheen ensimmäinen vanhempi. Voit kutsua muut myöhemmin.</p>
+        <p className="mb-3 text-sm text-muted">Sinusta tulee perheen ensimmäinen vanhempi. Uuden perheen luontiin tarvitaan salasana, jonka saat sovelluksen ylläpitäjältä.</p>
         <CreateFamilyForm />
       </section>
     </Shell>

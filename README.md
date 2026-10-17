@@ -13,8 +13,8 @@ Perheen yhteinen verkkosovellus (PWA): ostoslista, ruokalista, ruokatoiveet, res
 
 ## Kirjautuminen
 
-Ensimmäinen käyttäjä luo perheen ja hänestä tulee vanhempi (PIN-koodi). Muut liittyvät kutsulinkillä
-(Asetukset → Jaa kutsulinkki) ja valitsevat tai luovat profiilinsa. Vanhempien profiileissa on PIN.
+Perheen luoja (tarvitsee `PERHE_SALASANA`-salasanan) on perheen ensimmäinen vanhempi (PIN-koodi). Muut liittyvät kutsulinkillä
+(Asetukset → Jaa kutsulinkki) ja valitsevat tai luovat profiilinsa. Vanhempien profiileissa on PIN. Vääriä salasana-, kutsukoodi- ja PIN-yrityksiä rajoitetaan (8 / 15 min).
 
 ## Tekniikka
 
@@ -27,6 +27,7 @@ Ensimmäinen käyttäjä luo perheen ja hänestä tulee vanhempi (PIN-koodi). Mu
 | Muuttuja | Pakollinen | Kuvaus |
 | --- | --- | --- |
 | `DATABASE_URL` | ✅ | Postgres-yhteys (Vercelin Neon-integraatio asettaa tämän) |
+| `PERHE_SALASANA` | – | Uuden perheen luontiin vaadittava salasana. Jos puuttuu, uusia perheitä ei voi luoda. |
 | `SESSION_SECRET` | – | Evästeiden allekirjoitusavain (muuten luodaan tietokantaan) |
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | – | Push-avaimet (muuten luodaan tietokantaan) |
 

@@ -137,6 +137,12 @@ CREATE TABLE IF NOT EXISTS events (
 );
 CREATE INDEX IF NOT EXISTS events_family_date ON events(family_id, date);
 
+CREATE TABLE IF NOT EXISTS failed_attempts (
+  key text NOT NULL,
+  at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS failed_attempts_key ON failed_attempts(key, at);
+
 CREATE TABLE IF NOT EXISTS push_subscriptions (
   id serial PRIMARY KEY,
   member_id int NOT NULL REFERENCES members(id) ON DELETE CASCADE,

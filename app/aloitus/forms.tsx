@@ -22,6 +22,10 @@ export function CreateFamilyForm() {
   return (
     <form action={action} className="space-y-4">
       <div>
+        <label className="label">Luontisalasana</label>
+        <input name="password" type="password" className="input" autoComplete="off" required />
+      </div>
+      <div>
         <label className="label">Perheen nimi</label>
         <input name="family" className="input" placeholder="esim. Virtaset" required />
       </div>
